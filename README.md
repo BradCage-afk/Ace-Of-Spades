@@ -13,7 +13,7 @@ Needs Node 20.12+ and desktop Chrome 116+.
 For live AI, copy `.env.example` to `.env`, add your own NVIDIA key, restart, and untick the recorded route.
 
 ## How it works
-Goal -> page labels -> local masking -> privacy receipt -> local proxy -> DeepSeek on NVIDIA NIM -> local validator -> cue -> you act -> next step.
+Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMax M3.1 Flash on NVIDIA NIM -> local validator -> cue -> you act -> next step.
 
 - Field values are never included in the page snapshot.
 - The model can return only `tap`, `type`, `select`, `scroll` or `pause` cues. No code path clicks or fills.

@@ -8,7 +8,7 @@ const ROOT = new URL('..', import.meta.url);
 const ENV = fileURLToPath(new URL('.env', ROOT));
 if (existsSync(ENV)) process.loadEnvFile(ENV);
 const PORT = Number(process.env.PORT) || 8787;
-const MODEL = process.env.MODEL || 'deepseek-ai/deepseek-v4-pro-0813';
+const MODEL = process.env.MODEL || 'minimaxai/minimax-m3.1-flash';
 const UPSTREAM = process.env.UPSTREAM || 'https://integrate.api.nvidia.com/v1/chat/completions';
 const PAGES = new Set(['index.html', 'apply.html', 'review.html', 'done.html', 'style.css']);
 let hits = [];

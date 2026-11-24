@@ -3,5 +3,6 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20.12" },
-  "scripts": { "start": "node server/server.js", "test": "node --test test/unit.test.js" }
+  "scripts": { "start": "node server/server.js", "test": "node --test test/unit.test.js",
+    "check-ai": "node test/check-ai.js" }
 }
