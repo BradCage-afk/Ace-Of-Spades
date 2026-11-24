@@ -1,0 +1,5 @@
+body{margin:0;font:17px/1.5 system-ui,sans-serif;color:#222;background:#eef1f4}.mock{background:#7a1f1f;color:#fff;text-align:center;padding:6px;font-weight:700}
+header{background:#fff;padding:14px 28px;border-bottom:3px solid #27496d}nav a{margin-right:18px}main{max-width:900px;margin:24px auto;background:#fff;padding:24px 28px}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}.grid a{border:1px solid #bbb;padding:34px 18px;color:#27496d}
+label{display:block;margin:22px 0 6px;font-weight:600}input:not([type=checkbox]),select{font:inherit;padding:10px;width:100%;box-sizing:border-box}
+.check{display:flex;gap:10px}button{font:inherit;margin-top:26px;padding:12px 24px;background:#27496d;color:#fff;border:0}
