@@ -12,6 +12,8 @@ Needs Node 20.12+ and desktop Chrome 116+.
 
 For live AI, copy `.env.example` to `.env`, add your own NVIDIA key, restart, and untick the recorded route.
 
+Speed settings (optional, in `.env`): `REASONING=low` (default; set it empty to turn it off), `MAX_TOKENS=900`. The black window prints how long each plan took.
+
 ## How it works
 Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMax M3.1 Flash on NVIDIA NIM -> local validator -> cue -> you act -> next step.
 

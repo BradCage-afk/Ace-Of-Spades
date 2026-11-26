@@ -15,7 +15,7 @@ button,select,textarea{font:inherit;border-radius:10px;border:2px solid #4b2a63;
 button{cursor:pointer;font-weight:600}
 textarea{width:100%}
 .row,#controls{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
-#controls[hidden]{display:none}
+#controls[hidden],button[hidden]{display:none}
 .row button{flex:1}
 #send{background:#4b2a63;color:#fff}
 #talk.on{background:#d9363e;color:#fff}

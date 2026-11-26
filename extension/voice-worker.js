@@ -7,6 +7,7 @@ let asr;
 onmessage = async ({ data }) => {
   try {
     asr ||= pipeline('automatic-speech-recognition', 'Xenova/whisper-base', { dtype: 'q8', device: 'wasm', progress_callback: (p) => p.status === 'progress' && postMessage({ progress: Math.round(p.progress), file: p.file }) });
+    if (data.warm) { await asr; return postMessage({ ready: true }); }
     const out = await (await asr)(data.audio, { language: data.language, task: 'transcribe' });
     postMessage({ text: out.text.trim() });
   } catch (e) { asr = null; postMessage({ error: e.message }); }

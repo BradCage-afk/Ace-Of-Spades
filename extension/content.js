@@ -5,6 +5,7 @@
 
   const SELECTOR = 'a[href],button,input,select,textarea,summary,[role=button],[role=link],[role=tab],[role=menuitem],[role=checkbox],[role=radio],[role=textbox],[role=combobox]';
   const SENSITIVE = /\b(otp|one[- ]time|captcha|password|passcode|pin|cvv|aadhaar|aadhar|card number|pay|payment|place order|buy now|final submit|submit)\b|पासवर्ड|ओटीपी|आधार|भुगतान|जमा करें|ಪಾಸ್‌ವರ್ಡ್|ಒಟಿಪಿ|ಆಧಾರ್|ಪಾವತಿ|ಸಲ್ಲಿಸಿ/i;
+  const MAX_ITEMS = 80;
   let refs = new Map();
   let active = null;
   let frame = 0;
@@ -73,7 +74,8 @@
       if (!name) continue;
       found.push({ el, kind, name, near: Math.abs(el.getBoundingClientRect().top) });
     }
-    const kept = found.length > 140 ? new Set([...found].sort((a, b) => a.near - b.near).slice(0, 140)) : new Set(found);
+    // The items nearest the screen, in page order: a shorter list is faster for the AI to read.
+    const kept = found.length > MAX_ITEMS ? new Set([...found].sort((a, b) => a.near - b.near).slice(0, MAX_ITEMS)) : new Set(found);
     const elements = found.filter((f) => kept.has(f)).map((f, i) => {
       const id = `e${i + 1}`;
       refs.set(id, f.el);

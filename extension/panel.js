@@ -15,6 +15,33 @@ const $ = (id) => document.getElementById(id);
 const testTab = Number(new URLSearchParams(location.search).get('tab')) || null;
 const S = { goal: '', tabId: null, steps: [], i: 0, history: [], token: 0, plans: 0, running: false };
 const cache = new Map();
+const SAVED_PLANS = 50, SAVED_FOR_MS = 24 * 3600_000;
+let ticker = 0;
+
+// Plans are remembered on this computer, keyed by a hash of the exact (already masked) request.
+async function hashOf(text) {
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+async function savedPlan(key) {
+  const { plans = {} } = await chrome.storage.local.get('plans');
+  const hit = plans[key];
+  return hit && Date.now() - hit.t < SAVED_FOR_MS ? hit.plan : null;
+}
+async function savePlan(key, plan) {
+  const { plans = {} } = await chrome.storage.local.get('plans');
+  plans[key] = { plan, t: Date.now() };
+  const keep = Object.entries(plans).filter(([, v]) => Date.now() - v.t < SAVED_FOR_MS).sort((a, b) => b[1].t - a[1].t).slice(0, SAVED_PLANS);
+  await chrome.storage.local.set({ plans: Object.fromEntries(keep) });
+}
+function thinking(on) {
+  clearInterval(ticker);
+  if (!on) return;
+  const start = Date.now();
+  const tick = () => { $('mode').textContent = `Live AI: thinking ${Math.round((Date.now() - start) / 1000)}s`; };
+  tick();
+  ticker = setInterval(tick, 1000);
+}
 
 const ui = () => UI[$('lang').value] || UI.en;
 const locale = () => LANGS.find((l) => l[0] === $('lang').value)[2];
@@ -65,26 +92,32 @@ async function getPlan(snapshot) {
   const payload = buildPayload(ctx);
   const body = JSON.stringify(payload);
   $('receipt').textContent = JSON.stringify(payload, null, 2);
-  if (cache.has(body)) {
-    $('mode').textContent = 'Live AI (cached)';
-    $('receiptState').textContent = 'Reused an earlier plan: nothing new was sent. Earlier request:';
-    return cache.get(body);
+  const key = await hashOf(body);
+  const remembered = cache.get(key) || await savedPlan(key);
+  if (remembered) {
+    $('mode').textContent = 'Live AI (remembered, instant)';
+    $('receiptState').textContent = 'Reused a plan from an identical earlier request: nothing new was sent. That request:';
+    return remembered;
   }
   if (++S.plans > MAX_PLANS) throw new Error('Too many AI calls for one task. Press Stop and start again.');
-  $('mode').textContent = 'Live AI: thinking';
   $('receiptState').textContent = `${new Blob([body]).size} bytes sent to NVIDIA NIM through the local proxy:`;
-  let res;
-  try { res = await fetch(PROXY, { method: 'POST', headers: { 'content-type': 'application/json' }, body }); }
-  catch { throw new Error('The local proxy is not running. Start it, or tick "Recorded demo route" on the mock portal.'); }
-  const data = await res.json().catch(() => ({}));
+  thinking(true);
+  let res, data;
+  try {
+    try { res = await fetch(PROXY, { method: 'POST', headers: { 'content-type': 'application/json' }, body }); }
+    catch { throw new Error('The local proxy is not running. Start it, or tick "Recorded demo route" on the mock portal.'); }
+    data = await res.json().catch(() => ({}));
+  } finally { thinking(false); }
   if (!res.ok) throw new Error(data.error || 'The AI service failed.');
-  $('mode').textContent = 'Live AI';
-  cache.set(body, data.plan);
+  $('mode').textContent = `Live AI (${data.seconds ?? '?'}s)`;
+  cache.set(key, data.plan);
+  savePlan(key, data.plan);
   return data.plan;
 }
 
 async function plan(mayAsk = false) {
   const token = ++S.token;
+  $('retry').hidden = true;
   try {
     const tab = await chrome.tabs.get(S.tabId);
     const problem = await ensureAccess(tab, mayAsk);
@@ -105,6 +138,7 @@ async function plan(mayAsk = false) {
     if (token !== S.token) return;
     $('mode').textContent = 'Not guiding';
     say(e.message, 'warn');
+    $('retry').hidden = false;
   }
 }
 
@@ -127,7 +161,7 @@ async function advance() {
   S.i++;
   const token = S.token;
   // Give a click time to start a navigation, which re-plans by itself.
-  setTimeout(() => { if (token === S.token && S.running) show(); }, 900);
+  setTimeout(() => { if (token === S.token && S.running) show(); }, 500);
 }
 
 function stop() {
@@ -162,6 +196,7 @@ $('ask').onsubmit = async (e) => {
   save();
   plan(true);
 };
+$('retry').onclick = () => S.running && plan();
 $('repeat').onclick = () => S.steps[S.i] && speak(S.steps[S.i].say);
 $('stuck').onclick = () => { S.history.push('user is stuck, explain differently'); cache.clear(); plan(); };
 $('next').onclick = () => { send({ type: 'saathi:clear' }).catch(() => {}); advance(); };
@@ -170,16 +205,26 @@ $('stop').onclick = () => { stop(); say('Stopped.'); };
 // Push to talk, transcribed on this computer. The text goes in the box so the user can check it before sending.
 const WHISPER = { en: 'english', hi: 'hindi', kn: 'kannada', ta: 'tamil', te: 'telugu', ml: 'malayalam', mr: 'marathi', bn: 'bengali', gu: 'gujarati', pa: 'punjabi' };
 let worker = null, rec = null, held = false;
-function transcribe(audio) {
+function voice() {
   if (!worker) {
     worker = new Worker('voice-worker.js', { type: 'module' });
     worker.onerror = () => { $('note').textContent = 'On-device voice could not start. Please type.'; worker = null; };
     worker.onmessage = ({ data }) => {
+      if (data.ready) return;
       if (data.progress !== undefined) $('note').textContent = `First use: downloading the voice model (${data.file} ${data.progress}%). Your audio is not uploaded.`;
       else if (data.error) $('note').textContent = `On-device voice failed: ${data.error}. Please type.`;
       else { $('goal').value = data.text; $('note').textContent = data.text ? 'Check what I heard, then press Guide me.' : 'I did not hear anything. Try again or type.'; }
     };
   }
+  return worker;
+}
+// Load the voice model in the background when the panel opens, but only if it was already downloaded.
+caches.open('transformers-cache')
+  .then((c) => c.keys())
+  .then((keys) => { if (keys.some((k) => k.url.includes('whisper-base'))) voice().postMessage({ warm: true }); })
+  .catch(() => {});
+function transcribe(audio) {
+  voice();
   $('note').textContent = 'Transcribing on this computer...';
   worker.postMessage({ audio, language: WHISPER[$('lang').value] }, [audio.buffer]);
 }
