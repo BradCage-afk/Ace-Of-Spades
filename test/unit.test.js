@@ -32,3 +32,31 @@ test('action cue follows the target role', () => {
   assert.equal(one({ targetId: 'e1', cue: 'type', say: 'Apply here' }).steps[0].cue, 'tap');
   assert.equal(one({ targetId: 'e1', cue: 'scroll', say: 'Scroll to Apply' }).steps[0].cue, 'scroll');
 });
+import { formPlan, keywordPlan } from '../extension/lib/forms.js';
+const formPage = { elements: [
+  { id: 'e1', role: 'link', label: 'Home' },
+  { id: 'e2', role: 'textbox', label: 'Applicant name', form: 0, filled: true },
+  { id: 'e3', role: 'select', label: 'Course level', form: 0, filled: false },
+  { id: 'e4', role: 'textbox', label: 'One-time password (OTP)', form: 0, filled: false, sensitive: true },
+  { id: 'e5', role: 'button', label: 'Continue', form: 0, submit: true },
+] };
+test('form helper skips filled fields, pauses on sensitive ones, ends at submit', () => {
+  const p = formPlan(formPage, 'en');
+  assert.deepEqual(p.steps.map((s) => [s.targetId, s.cue]), [['e3', 'select'], ['e4', 'type'], ['e5', 'tap']]);
+  assert.match(p.steps[1].say, /yourself/);
+  assert.equal(validatePlan(p, formPage.elements).steps[1].cue, 'pause');
+});
+test('form helper ignores pages without a real form', () => {
+  assert.equal(formPlan({ elements: [{ id: 'e1', role: 'textbox', label: 'Search', form: 0 }, { id: 'e2', role: 'button', label: 'Go', form: 0, submit: true }] }, 'en'), null);
+  assert.equal(formPlan({ elements: [{ id: 'e1', role: 'link', label: 'Apply' }] }, 'en'), null);
+});
+test('form fields never reach the AI payload', () => {
+  const p = buildPayload({ goal: 'x', lang: 'en', history: [], snapshot: { host: 'h', title: 't', headings: [], elements: formPage.elements } });
+  assert.ok(!/filled|submit|form"/.test(JSON.stringify(p)));
+});
+test('keyword fallback picks one clear match, including from Hindi', () => {
+  const home = { elements: [{ id: 'e1', role: 'link', label: 'Property tax' }, { id: 'e2', role: 'link', label: 'Student scholarships' }, { id: 'e3', role: 'link', label: 'Pay now', sensitive: true }] };
+  assert.equal(keywordPlan(home, 'I want to pay property tax', 'en').steps[0].targetId, 'e1');
+  assert.equal(keywordPlan(home, 'छात्रवृत्ति के लिए आवेदन', 'hi').steps[0].targetId, 'e2');
+  assert.equal(keywordPlan(home, 'hello there', 'en'), null);
+});

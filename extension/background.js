@@ -3,6 +3,7 @@
 import { buildPayload } from './lib/redact.js';
 import { validatePlan } from './lib/validator.js';
 import { recordedPlan } from './lib/routes.js';
+import { formPlan, keywordPlan } from './lib/forms.js';
 import { UI, LANGS } from './lib/ui.js';
 
 const PROXY = 'http://localhost:8787/plan';
@@ -64,6 +65,12 @@ async function getPlan(snapshot) {
     persist();
     return recordedPlan(ctx) || { reply: 'Recorded routes work only on the mock portal. Turn it off to use live AI.', steps: [] };
   }
+  const form = formPlan(snapshot, S.lang);
+  if (form) {
+    Object.assign(S, { mode: 'Form helper (on this device, instant)', receiptState: 'Form helper: this page was planned on your computer. Nothing was sent to any AI.', receipt: '' });
+    persist();
+    return form;
+  }
   const payload = buildPayload(ctx);
   const body = JSON.stringify(payload);
   S.receipt = JSON.stringify(payload, null, 2);
@@ -83,7 +90,14 @@ async function getPlan(snapshot) {
     catch { throw new Error('The local proxy is not running. Start it, or tick "Recorded demo route" on the mock portal.'); }
     data = await res.json().catch(() => ({}));
   } finally { S.thinkingSince = 0; }
-  if (!res.ok) throw new Error(data.error || 'The AI service failed.');
+  if (!res.ok) {
+    const guess = keywordPlan(snapshot, S.goal, S.lang);
+    if (!guess) throw new Error(data.error || 'The AI service failed.');
+    S.mode = 'Keyword match (AI unavailable)';
+    say(`${data.error || 'The AI failed.'} Meanwhile, this is my best guess from the words in your goal.`, 'warn');
+    S.error = true;
+    return guess;
+  }
   S.mode = `Live AI${data.backup ? ', backup model' : ''} (${data.seconds ?? '?'}s)`;
   if (data.backup) say('The main AI was busy, so a backup model answered. It may be weaker in Indian languages.', 'warn');
   memo.set(key, data.plan);

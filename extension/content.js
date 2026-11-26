@@ -82,6 +82,12 @@
       const item = { id, role: f.kind, label: f.name };
       if (sensitive(f.el, f.name)) item.sensitive = true;
       if (f.kind === 'select') item.options = [...f.el.options || []].slice(0, 12).map(text);
+      // Local only, for planning forms without the AI. Never sent: buildPayload copies named fields.
+      const form = f.el.form || f.el.closest('form');
+      if (form) item.form = [...document.forms].indexOf(form);
+      if (['textbox', 'select', 'file'].includes(f.kind)) item.filled = Boolean(f.el.value && f.el.selectedIndex !== 0);
+      if (['checkbox', 'radio'].includes(f.kind)) item.filled = f.el.checked;
+      if (f.kind === 'button' && form && (f.el.type || '').toLowerCase() === 'submit') item.submit = true;
       return item;
     });
     const headings = [...document.querySelectorAll('h1,h2,h3')].filter(visible).map(text).filter(Boolean).slice(0, 12);
