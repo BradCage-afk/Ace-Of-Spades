@@ -60,3 +60,9 @@ test('keyword fallback picks one clear match, including from Hindi', () => {
   assert.equal(keywordPlan(home, 'छात्रवृत्ति के लिए आवेदन', 'hi').steps[0].targetId, 'e2');
   assert.equal(keywordPlan(home, 'hello there', 'en'), null);
 });
+import { localSay } from '../extension/lib/forms.js';
+test('Hindi and Kannada sentences are written locally from the page label', () => {
+  assert.equal(localSay({ cue: 'tap' }, { role: 'link', label: 'Student scholarships' }, 'hi'), '"Student scholarships" पर टैप करें।');
+  assert.match(localSay({ cue: 'type' }, { role: 'textbox', label: 'Applicant name' }, 'kn'), /Applicant name/);
+  assert.match(localSay({ cue: 'pause' }, { role: 'textbox', label: 'OTP' }, 'hi'), /खुद/);
+});

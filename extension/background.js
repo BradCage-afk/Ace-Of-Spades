@@ -3,7 +3,7 @@
 import { buildPayload } from './lib/redact.js';
 import { validatePlan } from './lib/validator.js';
 import { recordedPlan } from './lib/routes.js';
-import { formPlan, keywordPlan } from './lib/forms.js';
+import { formPlan, keywordPlan, localSay, LOCAL_SAY } from './lib/forms.js';
 import { UI, LANGS } from './lib/ui.js';
 
 const PROXY = 'http://localhost:8787/plan';
@@ -71,7 +71,9 @@ async function getPlan(snapshot) {
     persist();
     return form;
   }
-  const payload = buildPayload(ctx);
+  // For Hindi and Kannada the AI is asked in English and only chooses the items; Saathi writes the
+  // sentence itself (see plan()). Writing long Hindi or Kannada text was what made answers slow.
+  const payload = buildPayload(LOCAL_SAY.includes(S.lang) ? { ...ctx, lang: 'en' } : ctx);
   const body = JSON.stringify(payload);
   S.receipt = JSON.stringify(payload, null, 2);
   const key = await hashOf(body);
@@ -123,6 +125,10 @@ async function plan() {
     const raw = await getPlan(snapshot);
     if (token !== S.token || !S.running) return;
     const p = validatePlan(raw, snapshot.elements);
+    if (LOCAL_SAY.includes(S.lang) && !S.recorded) {
+      const byId = new Map(snapshot.elements.map((e) => [e.id, e]));
+      for (const step of p.steps) step.say = localSay(step, byId.get(step.targetId), S.lang);
+    }
     if (p.rejected.length) say(`Blocked ${p.rejected.length} unsafe or unknown suggestion(s): ${[...new Set(p.rejected)].join(', ')}.`, 'warn');
     if (p.prepare.length) say(`${ui()[7]}: ${p.prepare.join(', ')}`);
     if (p.reply) { say(p.reply); speak(p.reply); }

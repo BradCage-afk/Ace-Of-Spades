@@ -12,7 +12,7 @@ Needs Node 20.12+ and desktop Chrome 116+.
 
 For live AI, copy `.env.example` to `.env`, add your own NVIDIA key, restart, and untick the recorded route.
 
-AI settings match the submitted version (no reasoning setting, 4000 tokens, 60 s). If NVIDIA returns a busy error (429/5xx), the proxy retries once, then tries `BACKUP_MODEL` (set it empty to turn this off). A slow answer is waited for, not replaced. The black window prints how long each plan took.
+AI settings match the submitted version (no reasoning setting, 4000 tokens, 60 s). If the main model has not answered within 25 s (`HEDGE_SECONDS`), or fails, the proxy also asks `BACKUP_MODEL` and uses the first usable answer; the main model is not cut off (set `BACKUP_MODEL` empty to turn this off). For Hindi and Kannada the AI is asked in English and only picks the items; Saathi writes the spoken sentence from templates. The black window prints how long each plan took.
 
 ## How it works
 Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMax M3.1 Flash on NVIDIA NIM -> local validator -> cue -> you act -> next step.

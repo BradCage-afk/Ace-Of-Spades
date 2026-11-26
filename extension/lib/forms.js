@@ -6,6 +6,20 @@ const T = {
   kn: { textbox: (l) => `ಇಲ್ಲಿ ${l} ಬರೆಯಿರಿ.`, file: (l) => `${l} ಗಾಗಿ ಫೈಲ್ ಆಯ್ಕೆ ಮಾಡಿ.`, select: (l) => `ಈ ಪಟ್ಟಿಯಿಂದ ${l} ಆಯ್ಕೆ ಮಾಡಿ.`, checkbox: (l) => `ಇದನ್ನು ಓದಿ. ಸರಿಯಾಗಿದ್ದರೆ "${l}" ಟಿಕ್ ಮಾಡಿ.`, radio: (l) => `ಅನ್ವಯಿಸಿದರೆ "${l}" ಆಯ್ಕೆ ಮಾಡಿ.`, submit: (l) => `ಎಲ್ಲವನ್ನೂ ತುಂಬಿದ ನಂತರ ${l} ಒತ್ತಿ.`, pause: (l) => `${l}: ಈ ಹಂತವನ್ನು ನೀವೇ, ಖಾಸಗಿಯಾಗಿ ಮಾಡಿ.` },
 };
 const FIELD = ['textbox', 'select', 'file', 'checkbox', 'radio'];
+const TAP = { en: (l) => `Tap ${l}.`, hi: (l) => `"${l}" पर टैप करें।`, kn: (l) => `"${l}" ಒತ್ತಿ.` };
+const SCROLL = { en: (l) => `Scroll to ${l}.`, hi: (l) => `"${l}" तक स्क्रॉल करें।`, kn: (l) => `"${l}" ವರೆಗೆ ಸ್ಕ್ರಾಲ್ ಮಾಡಿ.` };
+// Languages whose step sentences Saathi writes itself, so the AI only has to choose the item.
+export const LOCAL_SAY = ['hi', 'kn'];
+
+// Rewrites a checked step's sentence in the user's language from a template.
+export function localSay(step, el, lang) {
+  const t = T[lang] || T.en;
+  if (step.cue === 'pause') return t.pause(el.label);
+  if (step.cue === 'scroll') return (SCROLL[lang] || SCROLL.en)(el.label);
+  if (step.cue === 'tap' && (el.role === 'checkbox' || el.role === 'radio')) return t[el.role](el.label);
+  if (step.cue === 'tap') return (TAP[lang] || TAP.en)(el.label);
+  return (t[el.role] || t.textbox)(el.label);
+}
 const SEARCH = /search|खोज|ಹುಡುಕ/i;
 
 export function formPlan(snapshot, lang) {

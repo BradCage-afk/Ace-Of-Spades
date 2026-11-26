@@ -14,7 +14,10 @@ const UPSTREAM = process.env.UPSTREAM || 'https://integrate.api.nvidia.com/v1/ch
 // REASONING (e.g. low) is optional and untested with the real model.
 const REASONING = process.env.REASONING || '';
 const MAX_TOKENS = Number(process.env.MAX_TOKENS) || 4000;
-const MAIN_SECONDS = Number(process.env.MAIN_SECONDS) || 60, BACKUP_SECONDS = Number(process.env.BACKUP_SECONDS) || 30;
+const MAIN_SECONDS = Number(process.env.MAIN_SECONDS) || 90, BACKUP_SECONDS = Number(process.env.BACKUP_SECONDS) || 60;
+// If the main model has not answered by then, the backup is asked as well and the first usable answer wins.
+// The main model is not cut off: it keeps going and can still win.
+const HEDGE_SECONDS = Number(process.env.HEDGE_SECONDS) || 25;
 // Used only when NVIDIA says the main model is busy or down (429/5xx), never just because it is slow.
 // It answered in about 5 s in our test, but lists no Indian languages.
 const BACKUP = process.env.BACKUP_MODEL ?? 'nvidia/nemotron-3.5-lightning-30b-a3b';
@@ -79,13 +82,28 @@ async function plan(req, res) {
       return { fail: e.name === 'TimeoutError' ? `took over ${seconds}s` : 'could not be reached', busy: e.name !== 'TimeoutError' };
     }
   };
-  let model = MODEL;
-  let out = await attempt(model, MAIN_SECONDS);
-  if (out.fail && out.busy && BACKUP && BACKUP !== MODEL) {
-    console.error(`${MODEL} ${out.fail}; using backup ${BACKUP}`);
-    model = BACKUP;
-    out = await attempt(model, BACKUP_SECONDS);
-  }
+  const { out, model } = await new Promise((resolve) => {
+    let running = 0, backupAsked = false, last = null, settled = false, timer = 0;
+    const finish = (result, m) => {
+      if (settled) return;
+      running--;
+      if (result.plan) { settled = true; clearTimeout(timer); return resolve({ out: result, model: m }); }
+      last = { out: result, model: m };
+      // The main model failed: ask the backup now rather than waiting.
+      if (m === MODEL && !backupAsked && useBackup) return askBackup(`${result.fail}`);
+      if (running === 0 && (backupAsked || !useBackup)) { settled = true; clearTimeout(timer); resolve(last); }
+    };
+    const useBackup = Boolean(BACKUP && BACKUP !== MODEL);
+    const askBackup = (why) => {
+      if (backupAsked || !useBackup || settled) return;
+      backupAsked = true; running++;
+      console.error(`${MODEL} ${why}; also asking backup ${BACKUP}`);
+      attempt(BACKUP, BACKUP_SECONDS).then((r) => finish(r, BACKUP));
+    };
+    running++;
+    attempt(MODEL, MAIN_SECONDS).then((r) => finish(r, MODEL));
+    timer = setTimeout(() => askBackup(`has not answered in ${HEDGE_SECONDS}s`), HEDGE_SECONDS * 1000);
+  });
   if (out.plan) return json(res, 200, { plan: out.plan, seconds: Number(since().slice(0, -1)), backup: model !== MODEL });
   console.error(`no plan after ${since()}`);
   return json(res, 502, { error: `The AI ${out.fail} (${since()}). Press Try again, or use the recorded demo route.` });
