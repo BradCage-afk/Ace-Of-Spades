@@ -16,7 +16,7 @@ test('payload carries no unexpected element fields', () => {
   assert.ok(!JSON.stringify(p).includes('SECRET'));
 });
 test('rejects invented targets, commands and unsafe speech', () => {
-  for (const s of [{ targetId: 'e9', cue: 'tap', say: 'x' }, { targetId: 'e1', cue: 'click', say: 'x' }, { targetId: 'e1', cue: 'tap', say: 'go to https://evil.example' }, { targetId: 'e1', cue: 'tap', say: 'call 98765 43210' }, { targetId: 'e3', cue: 'tap', say: 'x' }]) assert.equal(one(s).steps.length, 0, JSON.stringify(s));
+  for (const s of [{ targetId: 'e9', cue: 'tap', say: 'x' }, { targetId: 'e1', cue: 'click', say: 'x' }, { targetId: 'e1', cue: 'tap', say: 'go to https://evil.example' }, { targetId: 'e1', cue: 'tap', say: 'call 98765 43210' }]) assert.equal(one(s).steps.length, 0, JSON.stringify(s));
 });
 test('sensitive targets always become pause', () => assert.equal(one({ targetId: 'e2', cue: 'type', say: 'x' }).steps[0].cue, 'pause'));
 test('valid step passes and done needs no steps', () => {
@@ -26,4 +26,9 @@ test('valid step passes and done needs no steps', () => {
 test('parses fenced replies and rejects junk', () => {
   assert.deepEqual(parsePlan('<think>{}</think>```json\n{"steps":[]}\n```'), { steps: [] });
   assert.throws(() => parsePlan('sorry'));
+});
+test('action cue follows the target role', () => {
+  assert.equal(one({ targetId: 'e3', cue: 'tap', say: 'Tap the name box' }).steps[0].cue, 'type');
+  assert.equal(one({ targetId: 'e1', cue: 'type', say: 'Apply here' }).steps[0].cue, 'tap');
+  assert.equal(one({ targetId: 'e1', cue: 'scroll', say: 'Scroll to Apply' }).steps[0].cue, 'scroll');
 });

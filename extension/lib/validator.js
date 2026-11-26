@@ -1,10 +1,8 @@
 // The model's only vocabulary. There is no click, type-into, navigate or submit command.
 export const CUES = ['tap', 'type', 'select', 'scroll', 'pause'];
-const ROLES = {
-  tap: ['link', 'button', 'checkbox', 'radio'],
-  type: ['textbox', 'file'],
-  select: ['select'],
-};
+// tap, type and select only change the animation, so the cue follows the target's real role.
+// A model saying "tap" on a name box (to focus it) is still pointing at the right thing.
+const ACTION = { link: 'tap', button: 'tap', checkbox: 'tap', radio: 'tap', textbox: 'type', file: 'type', select: 'select' };
 const UNSAFE_SAY = /https?:|www\.|(?:\p{Nd}[\s-]?){9,}\p{Nd}|[<>]/iu;
 
 const clean = (s, n) => (typeof s === 'string' && s.trim() && !UNSAFE_SAY.test(s) ? s.trim().slice(0, n) : '');
@@ -21,8 +19,10 @@ export function validatePlan(raw, elements) {
     if (!el) out.rejected.push('unknown target');
     else if (!CUES.includes(s.cue)) out.rejected.push('unknown cue');
     else if (!say) out.rejected.push('unsafe or empty text');
-    else if (ROLES[s.cue] && !el.sensitive && !ROLES[s.cue].includes(el.role)) out.rejected.push('cue does not fit target');
-    else out.steps.push({ targetId: el.id, cue: el.sensitive ? 'pause' : s.cue, say, label: el.label });
+    else {
+      const cue = el.sensitive ? 'pause' : ['tap', 'type', 'select'].includes(s.cue) ? ACTION[el.role] || 'tap' : s.cue;
+      out.steps.push({ targetId: el.id, cue, say, label: el.label });
+    }
   }
   out.done = raw.done === true && out.steps.length === 0;
   return out;
