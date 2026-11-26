@@ -76,6 +76,8 @@ $('restart').onclick = async () => {
   command('restart');
 };
 $('repeat').onclick = () => command('repeat');
+// Stops any guidance and empties the conversation and the goal box. Remembered plans are kept.
+$('clearchat').onclick = () => { $('goal').value = ''; $('note').textContent = ''; command('clear'); };
 $('stuck').onclick = () => command('stuck');
 $('next').onclick = () => command('next');
 $('stop').onclick = () => command('stop');
@@ -149,7 +151,7 @@ $('talk').onblur = endTalk;
 for (const [v, name] of LANGS) $('lang').add(new Option(name, v));
 function localise() {
   const t = ui();
-  ['talk', 'send', 'repeat', 'stuck', 'next', 'stop', null, null, 'restart', 'retry'].forEach((id, i) => { if (id) $(id).textContent = t[i]; });
+  ['talk', 'send', 'repeat', 'stuck', 'next', 'stop', null, null, 'restart', 'retry', 'clearchat'].forEach((id, i) => { if (id) $(id).textContent = t[i]; });
   $('goal').placeholder = t[6];
   document.documentElement.lang = $('lang').value;
 }
