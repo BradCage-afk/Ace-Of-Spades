@@ -3,6 +3,8 @@ wHACKiest 2026, Track 2: Beyond the Browser.
 
 A Chrome side panel that guides you through a website with spoken steps and on-page cues. **It points; you make every click.**
 
+For the tech stack, USP, edge cases and business model, see [docs/OVERVIEW.md](docs/OVERVIEW.md).
+
 ## Run
 Needs Node 20.12+ and desktop Chrome 116+.
 1. `npm start`
