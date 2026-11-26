@@ -13,7 +13,11 @@ const UPSTREAM = process.env.UPSTREAM || 'https://integrate.api.nvidia.com/v1/ch
 // Short reasoning and a small output budget are the main speed levers for a reasoning model.
 const REASONING = process.env.REASONING ?? 'low';
 const MAX_TOKENS = Number(process.env.MAX_TOKENS) || 900;
-let sendReasoning = Boolean(REASONING);
+// Used only when the main model is busy or down. It answered in about 5 s in our test, but lists no Indian languages.
+const BACKUP = process.env.BACKUP_MODEL ?? 'nvidia/nemotron-3.5-lightning-30b-a3b';
+const BUSY = [429, 500, 502, 503, 504];
+const noReasoning = new Set();
+const wait = (ms) => new Promise((ok) => setTimeout(ok, ms));
 const PAGES = new Set(['index.html', 'apply.html', 'review.html', 'done.html', 'style.css']);
 let hits = [];
 
@@ -36,28 +40,42 @@ async function plan(req, res) {
   try { input = await readBody(req); } catch { return json(res, 400, { error: 'Bad request.' }); }
   if (typeof input?.goal !== 'string' || !Array.isArray(input?.elements)) return json(res, 400, { error: 'Bad request.' });
   const started = Date.now();
-  const call = () => fetch(UPSTREAM, {
+  const call = (model) => fetch(UPSTREAM, {
     method: 'POST',
     headers: { authorization: `Bearer ${process.env.NVIDIA_API_KEY}`, 'content-type': 'application/json' },
     body: JSON.stringify({
-      model: MODEL, temperature: 0.1, max_tokens: MAX_TOKENS,
-      ...(sendReasoning ? { chat_template_kwargs: { reasoning_effort: REASONING } } : {}),
+      model, temperature: 0.1, max_tokens: MAX_TOKENS,
+      ...(REASONING && !noReasoning.has(model) ? { chat_template_kwargs: { reasoning_effort: REASONING } } : {}),
       messages: [{ role: 'system', content: SYSTEM }, { role: 'user', content: JSON.stringify(input) }],
     }),
     signal: AbortSignal.timeout(45_000),
   });
-  try {
-    let r = await call();
+  const attempt = async (model) => {
+    let r = await call(model);
     // A model that rejects the reasoning setting is retried once without it, and not sent it again.
-    if (r.status === 400 && sendReasoning) { sendReasoning = false; console.error('reasoning setting rejected; continuing without it'); r = await call(); }
-    if ([429, 500, 502, 503, 504].includes(r.status)) { await new Promise((ok) => setTimeout(ok, 800)); r = await call(); }
+    if (r.status === 400 && REASONING && !noReasoning.has(model)) { noReasoning.add(model); console.error(`${model}: reasoning setting rejected; continuing without it`); r = await call(model); }
+    if (BUSY.includes(r.status)) { console.error(`${model}: busy (${r.status}), retrying`); await wait(1500); r = await call(model); }
+    return r;
+  };
+  try {
+    let model = MODEL;
+    let r = await attempt(model).catch((e) => { if (e.name === 'TimeoutError' && BACKUP) return { status: 504 }; throw e; });
+    if (BUSY.includes(r.status) && BACKUP && BACKUP !== MODEL) {
+      console.error(`${MODEL} unavailable (${r.status}); using backup ${BACKUP}`);
+      model = BACKUP;
+      r = await attempt(model);
+    }
     // Status and timing only: request and response bodies are never logged.
     const sec = ((Date.now() - started) / 1000).toFixed(1);
-    if (!r.ok) { console.error('upstream status', r.status, `${sec}s`); return json(res, 502, { error: `AI service returned ${r.status}.` }); }
+    if (!r.ok) {
+      console.error('upstream status', r.status, `${sec}s`);
+      const busy = BUSY.includes(r.status);
+      return json(res, 502, { error: busy ? `NVIDIA's AI service is busy or down right now (${r.status}). Press Try again in a moment, or use the recorded demo route.` : `AI service returned ${r.status}.` });
+    }
     const data = await r.json();
     const plan = parsePlan(data.choices?.[0]?.message?.content);
-    console.log(`plan ok ${sec}s, ${data.usage?.completion_tokens ?? '?'} output tokens`);
-    return json(res, 200, { plan, seconds: Number(sec) });
+    console.log(`plan ok ${sec}s with ${model}, ${data.usage?.completion_tokens ?? '?'} output tokens`);
+    return json(res, 200, { plan, seconds: Number(sec), backup: model !== MODEL });
   } catch (e) {
     console.error('plan failed:', e.name, `${((Date.now() - started) / 1000).toFixed(1)}s`);
     return json(res, 502, { error: e.name === 'TimeoutError' ? 'The AI took too long.' : 'The AI reply could not be used.' });

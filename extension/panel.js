@@ -109,7 +109,8 @@ async function getPlan(snapshot) {
     data = await res.json().catch(() => ({}));
   } finally { thinking(false); }
   if (!res.ok) throw new Error(data.error || 'The AI service failed.');
-  $('mode').textContent = `Live AI (${data.seconds ?? '?'}s)`;
+  $('mode').textContent = `Live AI${data.backup ? ', backup model' : ''} (${data.seconds ?? '?'}s)`;
+  if (data.backup) say('The main AI was busy, so a backup model answered. It may be weaker in Indian languages.', 'warn');
   cache.set(key, data.plan);
   savePlan(key, data.plan);
   return data.plan;
