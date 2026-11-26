@@ -23,6 +23,9 @@ Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMa
 - Voice is transcribed on this computer with Whisper. The model is downloaded from Hugging Face on first use; audio is not uploaded.
 - Spoken output uses only voices installed on the computer, with captions otherwise.
 
+## Panel closed
+The guide runs in the extension's background worker, so cues and spoken steps continue when the side panel is closed. Reopen the panel to see the conversation. **Start over** restarts the same goal from the current page; **Try again** repeats a failed request.
+
 ## Limits
 - The recorded route is scripted, not AI, and works only on the mock portal.
 - Your goal and page labels do go to the AI. Masking is rule-based and misses names, addresses and unusual formats.

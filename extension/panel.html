@@ -7,16 +7,17 @@
 <header><h1>Saathi</h1>
   <select id="lang" aria-label="Language"></select>
 </header>
-<p class="promise">I point. You make every click.</p>
+<p class="promise">I point. You make every click. I keep guiding even if you close this panel.</p>
 <div class="bar"><span id="mode" class="badge">Ready</span>
   <label><input type="checkbox" id="recorded"> Recorded demo route</label></div>
 <main id="chat" aria-live="polite"></main>
 <div id="controls" hidden>
-  <button id="retry" hidden>Try again</button><button id="repeat">Repeat</button><button id="stuck">I'm stuck</button><button id="next">Done, next</button><button id="stop">Stop</button>
+  <button id="repeat">Repeat</button><button id="stuck">I'm stuck</button><button id="next">Done, next</button><button id="stop">Stop</button>
 </div>
 <form id="ask">
   <textarea id="goal" rows="2" placeholder="What do you want to do here?" aria-label="Your goal"></textarea>
   <div class="row"><button type="button" id="talk">Hold to talk</button><button id="send">Guide me</button></div>
+  <div class="row"><button type="button" id="retry" hidden>Try again</button><button type="button" id="restart" hidden>Start over</button></div>
 </form>
 <p id="note" class="note">Your voice is turned into text on this computer and is not uploaded. First use downloads a voice model. You can always type.</p>
 <details><summary>Privacy receipt: what was sent to the AI</summary><p id="receiptState">Nothing sent yet.</p><pre id="receipt"></pre></details>
