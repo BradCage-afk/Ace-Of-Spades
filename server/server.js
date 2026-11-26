@@ -10,12 +10,13 @@ if (existsSync(ENV)) process.loadEnvFile(ENV);
 const PORT = Number(process.env.PORT) || 8787;
 const MODEL = process.env.MODEL || 'minimaxai/minimax-m3.1-flash';
 const UPSTREAM = process.env.UPSTREAM || 'https://integrate.api.nvidia.com/v1/chat/completions';
-// Short reasoning and a small output budget are the main speed levers for a reasoning model.
-const REASONING = process.env.REASONING ?? 'low';
-const MAX_TOKENS = Number(process.env.MAX_TOKENS) || 2500;
-// Seconds each model gets before the next option is tried, so the user is never left waiting a minute.
-const MAIN_SECONDS = Number(process.env.MAIN_SECONDS) || 25, BACKUP_SECONDS = Number(process.env.BACKUP_SECONDS) || 20;
-// Used only when the main model is busy or down. It answered in about 5 s in our test, but lists no Indian languages.
+// The same settings as the submitted version, which worked with MiniMax: no reasoning setting, 4000 tokens, 60 s.
+// REASONING (e.g. low) is optional and untested with the real model.
+const REASONING = process.env.REASONING || '';
+const MAX_TOKENS = Number(process.env.MAX_TOKENS) || 4000;
+const MAIN_SECONDS = Number(process.env.MAIN_SECONDS) || 60, BACKUP_SECONDS = Number(process.env.BACKUP_SECONDS) || 30;
+// Used only when NVIDIA says the main model is busy or down (429/5xx), never just because it is slow.
+// It answered in about 5 s in our test, but lists no Indian languages.
 const BACKUP = process.env.BACKUP_MODEL ?? 'nvidia/nemotron-3.5-lightning-30b-a3b';
 const BUSY = [429, 500, 502, 503, 504];
 const noReasoning = new Set();
@@ -71,11 +72,11 @@ async function plan(req, res) {
       } catch {
         // Status, sizes and timing only: request and response bodies are never logged.
         console.error(`${model}: unusable reply after ${since()} (finish: ${choice?.finish_reason}, ${tokens} tokens, answer ${choice?.message?.content?.length ?? 0} chars)`);
-        return { fail: 'gave no usable answer', busy: true };
+        return { fail: 'gave no usable answer', busy: false };
       }
     } catch (e) {
       console.error(`${model}: ${e.name === 'TimeoutError' ? `no answer within ${seconds}s` : e.name}`);
-      return { fail: e.name === 'TimeoutError' ? `took over ${seconds}s` : 'could not be reached', busy: true };
+      return { fail: e.name === 'TimeoutError' ? `took over ${seconds}s` : 'could not be reached', busy: e.name !== 'TimeoutError' };
     }
   };
   let model = MODEL;

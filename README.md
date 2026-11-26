@@ -12,7 +12,7 @@ Needs Node 20.12+ and desktop Chrome 116+.
 
 For live AI, copy `.env.example` to `.env`, add your own NVIDIA key, restart, and untick the recorded route.
 
-Speed settings (optional, in `.env`): `REASONING=low` (default; set it empty to turn it off), `MAX_TOKENS=2500`. If NVIDIA answers 429/5xx or times out, the proxy retries once, then tries `BACKUP_MODEL` (set it empty to turn this off). The black window prints how long each plan took.
+AI settings match the submitted version (no reasoning setting, 4000 tokens, 60 s). If NVIDIA returns a busy error (429/5xx), the proxy retries once, then tries `BACKUP_MODEL` (set it empty to turn this off). A slow answer is waited for, not replaced. The black window prints how long each plan took.
 
 ## How it works
 Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMax M3.1 Flash on NVIDIA NIM -> local validator -> cue -> you act -> next step.
@@ -26,7 +26,6 @@ Goal -> page labels -> local masking -> privacy receipt -> local proxy -> MiniMa
 ## Planning without the AI
 - **Form helper:** a page with a form of two or more fields is planned on the device, instantly: unfilled fields top to bottom, then the submit button. Sensitive fields still pause. The AI is only used to find the way between pages.
 - **Keyword match:** if the AI fails, Saathi points at the one link whose words best match the goal, and says so.
-- The AI gets 25 s (`MAIN_SECONDS`), then the backup model gets 20 s (`BACKUP_SECONDS`).
 
 ## Mock site tasks
 Scholarship application, property tax (ends at a payment pause), track application status (CAPTCHA pause), register a grievance, and download a birth certificate. All are fake; nothing is stored, sent or paid.
