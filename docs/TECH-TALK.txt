@@ -1,0 +1,113 @@
+SAATHI - TECH TALK NOTES (Team Ace Of Spades, 27 Nov 2026, 10:20 AM)
+Say each part in about 15 seconds. Show it in the demo where you can.
+
+------------------------------------------------------------
+1. THE SHAPE (slide 5)
+------------------------------------------------------------
+"Saathi has three parts: a Chrome extension in your browser, a small
+proxy that holds our API key, and an AI on NVIDIA's cloud. Everything
+that touches your data runs on your computer."
+
+  - Extension: reads the page's labels and draws the cues.
+  - Proxy: keeps the API key out of the extension; switches to a
+    backup model if the main one is slow or busy.
+  - AI: MiniMax M3.1 Flash on NVIDIA NIM, with Nemotron as backup.
+    It only decides WHERE to point.
+
+------------------------------------------------------------
+2. ON-DEVICE VOICE
+------------------------------------------------------------
+"Voice is turned into text in the browser with Whisper, so your audio
+is never uploaded. Spoken replies use only voices installed on your
+computer."
+
+  - The voice model is downloaded once, then runs locally.
+  - You see the transcript and can fix it before sending.
+  - Typing always works.
+  - HONEST: Hindi voice input isn't reliable yet (our test: the
+    standard model was unusable; a Hindi-tuned one cut errors from
+    297% to 16%, but it is a 400 MB download). Kannada voice is not
+    offered yet. Typed Hindi goals work.
+
+------------------------------------------------------------
+3. PRIVACY RECEIPT
+------------------------------------------------------------
+"Only the page's labels and your goal are sent, never what you type
+into fields. Numbers and codes are masked first. The privacy receipt
+shows the exact text sent, so you can check instead of trusting us."
+
+  - Form pages are planned on your laptop, so nothing is sent at all.
+  - DEMO: open "Privacy receipt" in the panel after one step.
+  - HONEST: masking catches phone numbers, emails, PAN and OTP-like
+    codes, not names or addresses.
+
+------------------------------------------------------------
+4. UNDER THE HOOD
+------------------------------------------------------------
+"Under the hood it's Chrome Manifest V3 with a background worker, so it
+keeps guiding even when you close the panel, plain JavaScript, and
+Node.js for the proxy. No server database and no user accounts."
+
+  - Point-only: the AI can return just five cues (tap, type, select,
+    scroll, pause). A local check drops anything not on the page.
+  - Passwords, OTP, CAPTCHA, payment and final submit always pause.
+  - Forms are planned on the device, so form pages are instant.
+  - Steps for a repeated page are remembered for 24 hours.
+  - HONEST: runs locally today; AWS hosting is planned.
+
+------------------------------------------------------------
+POSSIBLE TECHNICAL QUESTIONS
+------------------------------------------------------------
+Q: Why not run the AI on the device?
+A: Chrome's built-in AI doesn't support Indian languages yet and needs
+   a powerful machine. So the AI runs in the cloud but only sees page
+   labels; everything personal stays local.
+
+Q: Why MiniMax?
+A: In our speed test it answered fastest on NVIDIA NIM, and it
+   understood typed Hindi goals. Nemotron is the backup.
+
+Q: What if the AI is slow or down?
+A: After 25 seconds we also ask the backup and use whichever answers
+   first. If both fail, Saathi points at the best keyword match and
+   says so. Forms don't need the AI at all.
+
+Q: How do you stop prompt injection?
+A: By limiting what the AI can do, not by trusting it. Page text is
+   treated as untrusted, the AI can only point, and sensitive steps
+   always pause. Our mock site has a fake "pay now" trick link; Saathi
+   ignored it in our test.
+
+Q: Is it really an agent if it doesn't click?
+A: Yes. It understands the goal, reads the page, plans, watches what
+   you do and replans. We leave the click to you on purpose.
+
+Q: What if it points at the wrong thing?
+A: You can ignore it, press "I'm stuck", or Start over. A wrong point
+   costs a moment; a wrong click could cost money.
+
+Q: How does it know you did the step?
+A: It listens for your real click or a filled field on the page, then
+   moves on. It only checks that a field is filled, not what is in it.
+
+Q: Does it work on any website?
+A: It reads any page's labels with no per-site setup. Tested on our
+   mock portal (5 tasks) and public pages of scholarships.gov.in, not
+   logged-in forms. Embedded frames and image-only buttons are a gap.
+
+Q: Why Hindi steps from templates?
+A: Writing long Hindi answers made the AI slow. Now the AI just picks
+   the item and Saathi writes the Hindi sentence, which is instant.
+
+Q: Mobile?
+A: Desktop Chrome for now; Chrome on Android generally doesn't run
+   extensions. Cyber cafes and service centres use desktops.
+
+Q: Is it open source?
+A: Yes: github.com/BradCage-afk/Ace-Of-Spades
+
+------------------------------------------------------------
+IF SOMETHING BREAKS LIVE
+------------------------------------------------------------
+"NVIDIA's free service is busy; here is our recorded backup route,
+which is scripted." Tick "Recorded demo route" on localhost:8787.
